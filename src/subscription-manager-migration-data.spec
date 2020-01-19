@@ -2,7 +2,7 @@ Name: subscription-manager-migration-data
 Summary: RHN Classic to RHSM migration data
 Group: System Environment/Base
 License: See Red Hat Enterprise Agreement 
-Version: 2.0.18
+Version: 2.0.7
 Release: 1%{?dist}
 URL: http://redhat.com
 Source0: %{name}-%{version}.tar.gz
@@ -35,44 +35,6 @@ rm -rf $RPM_BUILD_ROOT
 %{_datadir}/rhsm/product/RHEL-%{?rhel}/channel-cert-mapping.txt
 
 %changelog
-* Thu Jan 22 2015 Alex Wood <awood@redhat.com> 2.0.18-1
-- 1184653, 1184657: Add new certs for Satellite 5.7 and OpenStack 6.0
-  (awood@redhat.com)
-
-* Mon Dec 22 2014 Alex Wood <awood@redhat.com> 2.0.17-1
-- 825089: Add AUS product certificates. (awood@redhat.com)
-
-* Mon Dec 22 2014 Alex Wood <awood@redhat.com> 2.0.16-1
-- 1176260: Add upstream product certificates. (awood@redhat.com)
-
-* Wed Dec 17 2014 Alex Wood <awood@redhat.com> 2.0.15-1
-- 1148110: Add product certificates for RHEL 7.1 (awood@redhat.com)
-
-* Mon Nov 17 2014 Alex Wood <awood@redhat.com> 2.0.14-1
-- Adding newest product certificates. (awood@redhat.com)
-
-* Thu Sep 04 2014 Alex Wood <awood@redhat.com> 2.0.13-1
-- Update to new channel mappings. (awood@redhat.com)
-
-* Thu Aug 21 2014 jesus m. rodriguez <jesusr@redhat.com> 2.0.12-1
-- Create new channel mappings based on most recent rcm-metadata.  (jesusr@redhat.com)
-- Updating rcm-metadata (jesusr@redhat.com)
-
-* Wed Aug 13 2014 jesus m. rodriguez <jesusr@redhat.com> 2.0.11-1
-- Create new channel mappings based on most recent rcm-metadata. (jesusr@redhat.com)
-- Updating rcm-metadata (jesusr@redhat.com)
-
-* Wed Jul 16 2014 Alex Wood <awood@redhat.com> 2.0.10-1
-- 1105656: Alter mapping for es-4-els (awood@redhat.com)
-
-* Wed Jul 16 2014 Alex Wood <awood@redhat.com> 2.0.9-1
-- Create new channel mappings based on most recent rcm-metadata.
-  (awood@redhat.com)
-
-* Wed May 07 2014 ckozak <ckozak@redhat.com> 2.0.8-1
-- Updated releasers for rhel5.11 (ckozak@redhat.com)
-- Add mappings for RHEL 5.11 (awood@redhat.com)
-
 * Tue Feb 18 2014 ckozak <ckozak@redhat.com> 2.0.7-1
 - Invoke sanity-check.py with python and require python for build.
   (awood@redhat.com)
