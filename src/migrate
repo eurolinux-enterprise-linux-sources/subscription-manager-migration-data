@@ -1,0 +1,370 @@
+#!/usr/bin/python
+import os
+import re
+import shutil
+import sys
+import commands
+import simplejson as json
+import glob
+from optparse import OptionParser
+
+
+class RunCommandException(Exception):
+    """ Raised by run_command() """
+    def __init__(self, msg, command, status, output):
+        Exception.__init__(self, msg)
+        self.command = command
+        self.status = status
+        self.output = output
+
+############################################################################
+# Utility methods
+############################################################################
+
+
+def run_command(command):
+    (status, output) = commands.getstatusoutput(command)
+    if status > 0:
+        sys.stderr.write("\n########## ERROR ############\n")
+        sys.stderr.write("Error running command: %s\n" % command)
+        sys.stderr.write("Status code: %s\n" % status)
+        sys.stderr.write("Command output: %s\n" % output)
+        raise RunCommandException("Error running command", command,
+                                  status, output)
+    return output
+
+
+def error_out(error_msgs):
+    """
+    Print the given error message (or list of messages) and exit.
+    """
+    if isinstance(error_msgs, list):
+        for line in error_msgs:
+            print "ERROR: %s" % line
+    else:
+        print "ERROR: %s" % error_msgs
+    sys.exit(1)
+
+
+def increase_version(version_string):
+    # from tito - common.py
+    regex = re.compile(r"^(%.*)|(.+\.)?([0-9]+)(\..*|_.*|%.*|$)")
+    match = re.match(regex, version_string)
+    if match:
+        matches = list(match.groups())
+        # Increment the number in the third match group, if there is one
+        if matches[2]:
+            matches[2] = str(int(matches[2]) + 1)
+        # Join everything back up, skipping match groups with None
+        return "".join([x for x in matches if x])
+
+    # If no match, return the original string
+    return version_string
+
+
+def reset_release(release_string):
+    # from tito - common.py
+    regex = re.compile(r"(^|\.)([.0-9]+)(\.|%|$)")
+    return regex.sub(r".\g<1>1\g<3>", release_string)
+
+
+def bump_version(spec_file):
+    version_regex = re.compile("^(version:\s*)(.+)(\.\d+)$", re.IGNORECASE)
+    in_f = open(spec_file, 'r')
+    out_f = open(spec_file + ".new", 'w')
+
+    for line in in_f.readlines():
+        match = re.match(version_regex, line)
+        if match:
+            line = "".join((match.group(1),
+                            increase_version(match.group(2)),
+                            reset_release(match.group(3)),
+                            "\n"))
+        out_f.write(line)
+
+    in_f.close()
+    out_f.close()
+    shutil.move(spec_file + ".new", spec_file)
+
+############################################################################
+# Cli Modules
+############################################################################
+
+
+class CliModule(object):
+    """ Common code used amongst all CLI Modules, adapted from tito. """
+    def __init__(self, usage):
+        self.parser = OptionParser(usage)
+        self.options = None
+
+        self._add_common_options()
+
+    def _add_common_options(self):
+        """ Add options to command line parser relevant to all modules """
+        # Options used for many different activities
+        self.parser.add_option("--debug", dest="debug", action="store_true",
+                help="print debug messages", default=False)
+
+    def _validate_options(self):
+        """
+        Subclasses can implement if they need to check for any incompatible
+        cmd line options.
+        """
+        pass
+
+    def main(self, argv):
+        (self.options, self.args) = self.parser.parse_args(argv)
+
+        self._validate_options()
+
+        if len(argv) < 1:
+            print(self.parser.error("Must supply an argument. "
+                  "Try -h for help."))
+
+        if self.options.debug:
+            os.environ['DEBUG'] = "true"
+
+
+class CheckModule(CliModule):
+    def __init__(self):
+        CliModule.__init__(self, "usage: %prog check DIR")
+
+        self._mapping = {}
+        self._dupes = set()
+        self.successful = True
+
+    def _load_mapping(self):
+        mapping_file = os.path.join(self.path, "channel-cert-mapping.txt")
+
+        # copypasta'd from rhn-migrate-classic-to-rhsm. here's hoping it won't
+        # change!
+        f = open(mapping_file)
+        lines = f.readlines()
+        for line in lines:
+            if re.match("^[a-zA-Z]", line):
+                line = line.replace("\n", "")
+                key, val = line.split(": ")
+                if key not in self._mapping.keys():
+                    self._mapping[key] = val
+                else:
+                    self._dupes.add(key)
+
+    def _check_for_dupes(self):
+        for dupe in self._dupes:
+            print("Duplicate channel mapping found: %s" % dupe)
+            self.successful = False
+
+    def _filter_out_none_mappings(self):
+        # remove any channels that map to none from further tests.
+        # NB: the value must be _EXACTLY_ "none" to be filtered,
+        # just as the migrate script does.
+        for key in self._mapping.keys():
+            if self._mapping[key] == "none":
+                del self._mapping[key]
+
+    def _check_for_valid_pem_files(self):
+        for key, val in self._mapping.items():
+            pem_path = os.path.join(self.path, val)
+            if not os.path.exists(pem_path):
+                print('Missing pem file: "%s: %s"' % (key, val))
+                self.successful = False
+            else:
+                f = open(pem_path, 'r')
+                line = f.readline()
+                if not line.startswith("-----BEGIN CERTIFICATE-----"):
+                    print('Does not appear to be a PEM file: "%s: %s"'
+                          % (key, val))
+                    self.successful = False
+
+    def _check_for_extra_pem_files(self):
+        pem_files = glob.glob(os.path.join(self.path, "*.pem"))
+        pem_files = map(os.path.basename, pem_files)
+        for pem_file in pem_files:
+            if not pem_file in self._mapping.values():
+                print("%s is unused." % pem_file)
+                self.successful = False
+
+    def main(self, argv):
+        CliModule.main(self, argv)
+
+        if len(argv) == 1:
+            print(self.parser.error("Please provide a directory to validate"))
+
+        self.path = argv[1]
+
+        self._load_mapping()
+        self._check_for_dupes()
+        self._filter_out_none_mappings()
+        self._check_for_valid_pem_files()
+        self._check_for_extra_pem_files()
+
+        if not self.successful:
+            error_out("Errors found!")
+
+
+class CreateMappingModule(CliModule):
+    def __init__(self):
+        CliModule.__init__(self, "usage: %prog createmapping [options]")
+
+        self.parser.add_option("-c", "--cert-directory", dest="certdir",
+                help="Root directory containing product certs.")
+        self.parser.add_option("-o", "--out",
+                help="File to write mapping to.")
+        self.parser.add_option("-j", "--json",
+                help="JSON file containing mapping information.")
+        self.parser.add_option("-d", "--cert-destination", dest="certdest",
+                help="Directory to copy certs to")
+
+    def _validate_options(self):
+        if self.options.certdest and not self.options.certdir:
+            error_out("Please provide a directory containing product certs")
+        if self.options.certdest and not os.path.isdir(self.options.certdir):
+            error_out("Could not find directory '%s'." % self.options.certdir)
+        if self.options.certdir and not self.options.certdest:
+            error_out("Please provide a destination to copy the certs to.")
+        if not self.options.json:
+            error_out("Please provide a JSON file.")
+        if not os.path.isfile(self.options.json):
+            error_out("Could not find file '%s'." % self.options.json)
+
+    def _generate_mapping(self, data, outfile):
+        mapping = {}
+
+        for product, details in data.items():
+            if product in mapping:
+                error_out("%s is in the JSON more than once." % product)
+            mapping[product] = os.path.basename(details['Product Cert file'])
+
+        if outfile:
+            f = open(outfile, "w")
+
+        for k, v in sorted(mapping.items()):
+            line = "%s: %s" % (k, v)
+            if outfile:
+                f.write(line + "\n")
+            else:
+                print line
+
+    def _copy_certs(self, certdir, certdest, data):
+        if not os.path.exists(certdest):
+            os.mkdir(certdest)
+        for product, details in data.items():
+            src = details['Product Cert file']
+            if src[0] == "/":
+                src = src[1:]
+            src = os.path.join(certdir, src)
+            shutil.copy(src, certdest)
+
+    def main(self, argv):
+        CliModule.main(self, argv)
+
+        # don't allow running in master
+        output = run_command("git branch")
+        if "* master" in output.split("\n"):
+            error_out("master branch not supported, please switch to a "
+                      "proper branch.\n\n%s" % output)
+
+        # read in json file
+        f = open(self.options.json)
+        data = json.load(f)
+
+        self._generate_mapping(data, self.options.out)
+
+        if self.options.certdir and self.options.certdest:
+            self._copy_certs(self.options.certdir, self.options.certdest, data)
+
+
+class NewBranchModule(CliModule):
+
+    def __init__(self):
+        CliModule.__init__(self, "usage: %prog newbranch [options]")
+
+        self.spec_file = "subscription-manager-migration-data.spec"
+        self.parser.add_option("--src", dest="src", metavar="SRCBRANCH",
+                help="Existing branch to use as a basis for new branch")
+        self.parser.add_option("--dest", dest="dest", metavar="DESTBRANCH",
+                help="New branch based off of src branch.")
+        self.parser.add_option("--list", dest="list", action="store_true",
+                help="List the available branches")
+
+    def _determine_dir(self, branch):
+        in_str = branch.split('.')[0]
+        regex = re.compile(r"^(.*)(\d+)$", re.IGNORECASE)
+        match = re.match(regex, in_str)
+        if match:
+            matches = list(match.groups())
+            return "".join([matches[0], '-', matches[1]])
+
+    def _validate_options(self):
+        # if we didn't pass in --list, better make sure we
+        # have a src and dest option.
+        if not self.options.list:
+            if not self.options.src or not self.options.dest:
+                error_out("Must specify a src and dest branch")
+
+    def main(self, argv):
+        CliModule.main(self, argv)
+
+        if self.options.list:
+            print(run_command("git branch"))
+            sys.exit(1)
+
+        # branch off of most recent release for major version
+        base_cmd = "git checkout %s %s"
+        run_command("git checkout %s" % self.options.src)
+        run_command("git checkout -b %s" % self.options.dest)
+        dir_to_rm = self._determine_dir(self.options.src)
+        bump_version(self.spec_file)
+        run_command("git rm %s/*" % dir_to_rm)
+        run_command("git add *.spec")
+        run_command("git commit %s %s -m \"Preparing for new migration data\"" %
+                    (dir_to_rm, self.spec_file))
+        # git won't maintain an empty directory, so let's create it for you
+        # the hope is you will be running createmapping soon afterwards.
+        os.mkdir(dir_to_rm)
+
+        print
+        print("Created branch: %s" % self.options.dest)
+        print("   View: git show HEAD")
+        print("   Push: git push origin %s" % self.options.dest)
+
+############################################################################
+# CLI - the main driver class
+############################################################################
+
+
+class CLI(object):
+
+    def usage(self):
+        print("Usage: migrate MODULENAME --help")
+        print("Supported modules:")
+        print("  newbranch     - Creates a new branch")
+        print("  createmapping - Creates mapping data in the current branch")
+        print("  check         - Sanity checks the product cert mappings")
+
+    def main(self, argv):
+        # thanks again tito
+        if len(argv) < 1 or not argv[0] in CLI_MODULES.keys():
+            self.usage()
+            sys.exit(1)
+        module_class = CLI_MODULES[argv[0]]
+        module = module_class()
+        return module.main(argv)
+
+############################################################################
+# Constants
+############################################################################
+CLI_MODULES = {
+    "newbranch": NewBranchModule,
+    "createmapping": CreateMappingModule,
+    "check": CheckModule,
+}
+
+############################################################################
+# MAIN
+############################################################################
+if __name__ == "__main__":
+    try:
+        CLI().main(sys.argv[1:])
+    except KeyboardInterrupt:
+        pass

@@ -1,0 +1,23 @@
+For historical reasons, the migration script looks for the certificates in
+a RHEL-$DISTRIBUTION directory (where $DISTRIBUTION is 5 or 6).  The 
+subscription-manager-migration package does not require the 
+subscription-manager-migration-data package because the migration-data
+package is RHEL only and cannot be included in Fedora.  We intentionally
+omitted the dependency so that subscription-manager would have the option
+of being included in Fedora.
+
+As a consequence, we can't rely on RPM to enforce version requirements
+so the migration-data needs to remain backwards compatible.  Thus, I added
+some hacks to the spec and make files to support the RHEL-$DISTRIBUTION
+convention (even though all the certificates are stored in the RHEL directory).
+The result is that you must supply a value for the RHEL_VER variable to make
+when you run 'make install'.  The spec file supplies this value by using the
+%{rhel} macro.  This macro is not defined on Fedora.  If you need to build
+on Fedora (for some reason), you can supply the macro with tito by using the
+--rpmbuild-options argument combined with rpmbuild's --define argument.
+
+For example:
+
+  tito build --test --rpm --rpmbuild-options="--define 'rhel 6'"
+
+This example defines the %{rhel} to be 6.

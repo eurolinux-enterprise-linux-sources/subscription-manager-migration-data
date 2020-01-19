@@ -2,17 +2,25 @@ PREFIX ?= /
 
 PKGNAME = subscription-manager-migration-data
 VERSION = $(shell echo `grep ^Version: $(PKGNAME).spec | awk '{ print $$2 }'`)
-
 RHSMDIR = usr/share/rhsm
 
-build:
-	./sanity-check.py RHEL-7
+# Must be specified by the user
+RHEL_VER =
 
-install: build
+build:
+	python sanity-check.py RHEL
+
+check_env:
+ifndef RHEL_VER
+	@echo 1>&2 "RHEL_VER must be set"
+	false
+endif
+
+install: check_env build
 	install -d ${PREFIX}/${RHSMDIR}/product
-	install -d ${PREFIX}/${RHSMDIR}/product/RHEL-7
-	#install -m 644 RHEL-7/*.pem ${PREFIX}/${RHSMDIR}/product/RHEL-7
-	install -m 644 RHEL-7/channel-cert-mapping.txt ${PREFIX}/${RHSMDIR}/product/RHEL-7/channel-cert-mapping.txt
+	install -d ${PREFIX}/${RHSMDIR}/product/RHEL-${RHEL_VER}
+	install -m 644 RHEL/*.pem ${PREFIX}/${RHSMDIR}/product/RHEL-${RHEL_VER}
+	install -m 644 RHEL/channel-cert-mapping.txt ${PREFIX}/${RHSMDIR}/product/RHEL-${RHEL_VER}/channel-cert-mapping.txt
 	
 clean:
 	rm -f *~ *.bak *.tar.gz

@@ -2,14 +2,13 @@ Name: subscription-manager-migration-data
 Summary: RHN Classic to RHSM migration data
 Group: System Environment/Base
 License: See Red Hat Enterprise Agreement 
-Version: 1.13.0.2
+Version: 2.0.18
 Release: 1%{?dist}
 URL: http://redhat.com
 Source0: %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch: noarch
-
-BuildRequires: python-devel
+BuildRequires: python
 
 %description
 This package provides certificates for migrating a system from
@@ -23,7 +22,7 @@ make -f Makefile build VERSION=%{version}-%{release} PREFIX=$RPM_BUILD_DIR
 
 %install
 rm -rf $RPM_BUILD_ROOT
-make -f Makefile install VERSION=%{version}-%{release} PREFIX=$RPM_BUILD_ROOT
+make -f Makefile install VERSION=%{version}-%{release} PREFIX=$RPM_BUILD_ROOT RHEL_VER=%{?rhel}
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -31,80 +30,103 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root,-)
 %attr(755,root,root) %dir %{_datadir}/rhsm/product
-%attr(755,root,root) %dir %{_datadir}/rhsm/product/RHEL-7
-#%{_datadir}/rhsm/product/RHEL-7/*pem
-%{_datadir}/rhsm/product/RHEL-7/channel-cert-mapping.txt
+%attr(755,root,root) %dir %{_datadir}/rhsm/product/RHEL-%{?rhel}
+%{_datadir}/rhsm/product/RHEL-%{?rhel}/*pem
+%{_datadir}/rhsm/product/RHEL-%{?rhel}/channel-cert-mapping.txt
 
 %changelog
-* Wed Aug 07 2013 Alex Wood <awood@redhat.com> 1.13.0.2-1
-- Add BuildRequires for python. (awood@redhat.com)
-
-* Tue Jul 02 2013 Alex Wood <awood@redhat.com> 1.13.0.1-1
-- Revising files for RHEL 7 (awood@redhat.com)
-
-* Tue Nov 13 2012 Adrian Likins <alikins@redhat.com> 1.12.2.6-1
-- 875760: Add Openshift channel mappings. (awood@redhat.com)
-
-* Mon Nov 05 2012 Adrian Likins <alikins@redhat.com> 1.12.2.5-1
-- 872959: Adding missing mappings and certificates. (awood@redhat.com)
-
-* Fri Nov 02 2012 Adrian Likins <alikins@redhat.com> 1.12.2.4-1
-- Adding OpenShift product certificates. (awood@redhat.com)
-
-* Fri Oct 12 2012 Adrian Likins <alikins@redhat.com> 1.12.2.3-1
-- rev subscription-manager-migration-data for 6.4 
-
-* Mon Oct 08 2012 Adrian Likins <alikins@redhat.com> 1.12.2.2-1
-- Updating tito releaser. (awood@redhat.com)
-
-* Fri Oct 05 2012 Alex Wood <awood@redhat.com> 1.12.2.1-1
-- New product migration data for RHEL 6.4. (awood@redhat.com)
-- Updating mapping creation script for RHEL 6.4. (awood@redhat.com)
-- Add check to see if more than one certificate exists for a product ID.
+* Thu Jan 22 2015 Alex Wood <awood@redhat.com> 2.0.18-1
+- 1184653, 1184657: Add new certs for Satellite 5.7 and OpenStack 6.0
   (awood@redhat.com)
 
-* Tue May 01 2012 Alex Wood <awood@redhat.com> 1.12.1.8-1
-- 816364: Correcting mapping for Red Hat Enterprise Virtualization on i386.
-  (awood@redhat.com)
-- Adding product certs. (awood@redhat.com)
+* Mon Dec 22 2014 Alex Wood <awood@redhat.com> 2.0.17-1
+- 825089: Add AUS product certificates. (awood@redhat.com)
 
-* Tue May 01 2012 Alex Wood <awood@redhat.com> 1.12.1.7-1
-- 816364: Adding corrected product cert for Red Hat Enterprise Virtualization
-  on i386. (awood@redhat.com)
+* Mon Dec 22 2014 Alex Wood <awood@redhat.com> 2.0.16-1
+- 1176260: Add upstream product certificates. (awood@redhat.com)
 
-* Tue May 01 2012 Alex Wood <awood@redhat.com> 1.12.1.6-1
-- 816364: Adding missing product cert for Red Hat Enterprise Virtualization on
-  i386. (awood@redhat.com)
-- 816364: Adding missing mapping for Red Hat Enterprise Virtualization on i386.
-  (awood@redhat.com)
+* Wed Dec 17 2014 Alex Wood <awood@redhat.com> 2.0.15-1
+- 1148110: Add product certificates for RHEL 7.1 (awood@redhat.com)
 
-* Tue Apr 24 2012 Michael Stead <mstead@redhat.com> 1.12.1.5-1
-- 811779: Remove dependency on subscription-manager. (awood@redhat.com)
+* Mon Nov 17 2014 Alex Wood <awood@redhat.com> 2.0.14-1
+- Adding newest product certificates. (awood@redhat.com)
 
-* Tue Apr 24 2012 Michael Stead <mstead@redhat.com> 1.12.1.4-1
-- 815433: Add sam-rhel-x86_64-server-6 channel mapping. (awood@redhat.com)
-- Dealt with certificate change for HPN. (awood@redhat.com)
-- 811633: Adding mapping for product 167 "Red Hat CloudForms"
-  (awood@redhat.com)
+* Thu Sep 04 2014 Alex Wood <awood@redhat.com> 2.0.13-1
+- Update to new channel mappings. (awood@redhat.com)
 
-* Wed Apr 11 2012 Michael Stead <mstead@redhat.com> 1.12.1.3-1
-- 799152: Adding missing product certificates and mappings. (awood@redhat.com)
-- Updating create-mapping.py (awood@redhat.com)
+* Thu Aug 21 2014 jesus m. rodriguez <jesusr@redhat.com> 2.0.12-1
+- Create new channel mappings based on most recent rcm-metadata.  (jesusr@redhat.com)
+- Updating rcm-metadata (jesusr@redhat.com)
 
-* Fri Mar 23 2012 Alex Wood <awood@redhat.com> 1.12.1.2-1
-- Altering version to reflect new branching strategy. (awood@redhat.com)
-- Add s390x and cf channels. (awood@redhat.com)
-- Moving RHEL 6 migration data to a separate branch. (awood@redhat.com)
-- Updating version number. (mstead@redhat.com)
-- Adding mapping file and certs for RHEL-6. (awood@redhat.com)
-- Adding a script to generate mapping files from product data.
+* Wed Aug 13 2014 jesus m. rodriguez <jesusr@redhat.com> 2.0.11-1
+- Create new channel mappings based on most recent rcm-metadata. (jesusr@redhat.com)
+- Updating rcm-metadata (jesusr@redhat.com)
+
+* Wed Jul 16 2014 Alex Wood <awood@redhat.com> 2.0.10-1
+- 1105656: Alter mapping for es-4-els (awood@redhat.com)
+
+* Wed Jul 16 2014 Alex Wood <awood@redhat.com> 2.0.9-1
+- Create new channel mappings based on most recent rcm-metadata.
   (awood@redhat.com)
 
-* Tue Feb 14 2012 Michael Stead <mstead@redhat.com> 1.12-1
-- 773030: add subscription-manager-migration-data to RHEL 6.3
-  (mstead@redhat.com)
-- Adding a quick and dirty script to help with mapping file updates.
+* Wed May 07 2014 ckozak <ckozak@redhat.com> 2.0.8-1
+- Updated releasers for rhel5.11 (ckozak@redhat.com)
+- Add mappings for RHEL 5.11 (awood@redhat.com)
+
+* Tue Feb 18 2014 ckozak <ckozak@redhat.com> 2.0.7-1
+- Invoke sanity-check.py with python and require python for build.
   (awood@redhat.com)
+
+* Tue Feb 18 2014 ckozak <ckozak@redhat.com> 2.0.6-1
+- Add RHEL 7 certs. (awood@redhat.com)
+
+* Thu Oct 17 2013 Alex Wood <awood@redhat.com> 2.0.5-1
+- 1009932: Add RHEL 4 mappings to migration data. (awood@redhat.com)
+
+* Thu Sep 26 2013 Alex Wood <awood@redhat.com> 2.0.4-1
+- Adding RHEL 6.5 certificates. (awood@redhat.com)
+- Detect invalid channels more generally. (awood@redhat.com)
+
+* Wed Sep 25 2013 Alex Wood <awood@redhat.com> 2.0.3-1
+- 1011992: Skip high touch beta channels. (awood@redhat.com)
+
+* Wed Sep 11 2013 Alex Wood <awood@redhat.com> 2.0.2-1
+- Updating product cert mappings. (awood@redhat.com)
+- Point to newest rcm-metadata (awood@redhat.com)
+- Adding file explaining how to build on Fedora. (awood@redhat.com)
+
+* Thu Jun 06 2013 Alex Wood <awood@redhat.com> 2.0.1-1
+- new package built with tito
+
+* Wed Jun 05 2013 Alex Wood <awood@redhat.com> 2.0.0-1
+- Unifying all RHEL product certificates into one package
+
+* Thu May 09 2013 Alex Wood <awood@redhat.com> 1.11.3.0-1
+- Adding product certificates for RHEL 5.10
+
+* Fri Oct 12 2012 Alex Wood <awood@redhat.com> 1.11.2.7-1
+- 865566: Add mappings for RHEV debuginfo channels. (awood@redhat.com)
+
+* Tue Oct 02 2012 Alex Wood <awood@redhat.com> 1.11.2.6-1
+- Removing unused product certificate. (awood@redhat.com)
+
+* Tue Oct 02 2012 Alex Wood <awood@redhat.com> 1.11.2.5-1
+- 861420: Add mapping and certificates for RHEV 3.0. (awood@redhat.com)
+- 861470: Add mapping and certificates for ELS-JBEAP. (awood@redhat.com)
+
+* Wed Aug 29 2012 Alex Wood <awood@redhat.com> 1.11.2.4-1
+- Adding product certificate for RHB i386. (awood@redhat.com)
+- 820749: Correct mappings for i386 DTS. (awood@redhat.com)
+- 849274, 849305: Update mappings for JBEAP and RHEV Agent. (awood@redhat.com)
+
+* Thu Aug 09 2012 Alex Wood <awood@redhat.com> 1.11.2.3-1
+- Correcting logic on special hack for 180.pem (awood@redhat.com)
+- Adding additional product certs and mappings. (awood@redhat.com)
+- Adding special hack for 17{6|8}.pem and 180.pem (awood@redhat.com)
+- 840148: Adding cert and mapping for Server-EUCJP (awood@redhat.com)
+
+* Thu Jun 28 2012 Alex Wood <awood@redhat.com> 1.11.2.2-1
+- Product mappings for RHEL5.9 (awood@redhat.com)
 
 * Tue Jan 17 2012 Alex Wood <awood@redhat.com> 1.11-1
 - 782208: Use RHEL 5.8 certificates. (awood@redhat.com)

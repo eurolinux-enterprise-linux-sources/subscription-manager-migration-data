@@ -1,0 +1,3 @@
+[submodule "rcm-metadata"]
+	path = rcm-metadata
+	url = git://git.app.eng.bos.redhat.com/rcm/rcm-metadata.git
